@@ -29,5 +29,9 @@ trap <- read_rds(here::here("rawdata", "kalr_trap.rds")) |>
   ) |>
   mutate(op = as.logical(op))
 
+if (!dir.exists(here::here("data"))) {
+  dir.create(here::here("data"))
+}
+
 write_rds(kalr, here::here("data", "kalr.rds"))
 write_rds(trap, here::here("data", "trap.rds"))
