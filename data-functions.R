@@ -327,13 +327,13 @@ fce_parse_formula <- function(formula, data, knots = NULL) {
       \(x) x == "NA"
     ) |>
     discard(
-      \(x) isa(data[[x]], "factor")
+      \(x) isa(data[[x]], "factor") || isa(data[[x]], "numeric")
     )
   if (length(nonfct_by) > 0) {
     warning(
       "by variables ",
       paste(nonfct_by, collapse = " "),
-      " are not factors"
+      " are not factors or numeric"
     )
   }
   ## Check that all predictors are present in the provided data
