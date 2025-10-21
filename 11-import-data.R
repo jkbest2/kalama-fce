@@ -25,7 +25,8 @@ trap <- read_rds(here::here("rawdata", "kalr_trap.rds")) |>
   rename(
     date = Date,
     op = TrapStatus,
-    discharge = Disc
+    discharge = Disc,
+    temperature = Temp
   ) |>
   mutate(op = as.logical(op))
 

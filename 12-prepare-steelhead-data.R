@@ -17,9 +17,21 @@ exclude_outlier <- FALSE
 trap_op <- trap |>
   select(date, op)
 trap_cov <- trap |>
-  select(date, discharge) |>
+  select(date, discharge, temperature) |>
   mutate(
-    log_discharge_scl = scale_to(log(discharge), 0.5)
+    log_discharge_scl = scale_to(log(discharge), 0.5),
+    ## Use linear interpolation to add values to temperature time series. All
+    ## missing values are during trap outages. Because pcap during trap outages
+    ## is fixed at 0, these interpolated values don't enter the likelihood in
+    ## any way. The interpolation is done because Stan doesn't accept missing
+    ## values.
+    temp_interp = is.na(temperature),
+    temperature = approx(
+      x = seq_along(temperature),
+      y = temperature,
+      xout = seq_along(temperature)
+    )$y,
+    temperature_scl = scale_to(temp_interp, 0.5)
   )
 
 kalr_sth <- kalr |>

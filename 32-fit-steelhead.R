@@ -9,7 +9,7 @@ source(here::here("data-functions.R"))
 base_dir <- here::here("results", "steelhead")
 
 ## Read preprocessed data
-sth_data <- read_rds(here::here(base_dir, "steelhead-prep.rds"))
+sth_prep <- read_rds(here::here(base_dir, "steelhead-prep.rds"))
 
 ## Model specification --------------------------------------------------------
 avail <- list(
@@ -41,11 +41,13 @@ avail <- list(
 ## posterior sensitive to the chosen variance and the latter removes some
 ## flexibility.
 pcap <- list(
-  formula = ~ 1 + log_discharge_scl,
+  formula = ~ 1 + log_discharge_scl * temperature_scl,
   priors = fce_priors(
     fixed = list(
       Intercept = normal(-2, 1),
-      log_discharge_scl = normal(0, 2.5)
+      log_discharge_scl = normal(0, 2.5),
+      temperature_scl = normal(0, 2.5),
+      `log_discharge_scl:temperature_scl` = normal(0, 2.5)
     ),
     random = list()
   )
@@ -72,8 +74,8 @@ data <- fce_data(
   avail$formula, avail$priors,
   pcap$formula, pcap$priors,
   rs$formula, rs$priors,
-  sth_data$release_df, sth_data$recap_df,
-  sth_data$unmarked, sth_data$pred_df
+  sth_prep$release_df, sth_prep$recap_df,
+  sth_prep$unmarked, sth_prep$pred_df
 )
 
 fit <- stan(

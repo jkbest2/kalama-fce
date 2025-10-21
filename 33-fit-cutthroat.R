@@ -9,7 +9,7 @@ source(here::here("data-functions.R"))
 base_dir <- here::here("results", "cutthroat")
 
 ## Read preprocessed data
-cth_data <- read_rds(here::here(base_dir, "cutthroat-prep.rds"))
+cth_prep <- read_rds(here::here(base_dir, "cutthroat-prep.rds"))
 
 ## Model specification --------------------------------------------------------
 avail <- list(
@@ -41,11 +41,13 @@ avail <- list(
 ## posterior sensitive to the chosen variance and the latter removes some
 ## flexibility.
 pcap <- list(
-  formula = ~ 1 + log_discharge_scl,
+  formula = ~ 1 + log_discharge_scl * temperature_scl,
   priors = fce_priors(
     fixed = list(
       Intercept = normal(-2, 1),
-      log_discharge_scl = normal(0, 2.5)
+      log_discharge_scl = normal(0, 2.5),
+      temperature_scl = normal(0, 2.5),
+      `log_discharge_scl:temperature_scl` = normal(0, 2.5)
     ),
     random = list()
   )
@@ -72,8 +74,8 @@ data <- fce_data(
   avail$formula, avail$priors,
   pcap$formula, pcap$priors,
   rs$formula, rs$priors,
-  cth_data$release_df, cth_data$recap_df,
-  cth_data$unmarked, cth_data$pred_df
+  cth_prep$release_df, cth_prep$recap_df,
+  cth_prep$unmarked, cth_prep$pred_df
 ) |>
   fce_validate_data()
 

@@ -20,8 +20,8 @@ data <- fit_obj$data
 diag_df <- convergence_diagnostics(fit_obj$fit)
 
 ## Convert to rvars draws makes it easier to manipulate the posterior
-post <- as_draws_rvars(fit_obj$fit) |>
-  thin_draws(3)
+post <- as_draws_rvars(fit_obj$fit)
+# thin_draws(3)
 
 n_div <- get_num_divergent(fit_obj$fit)
 if (n_div > 0) {
@@ -77,7 +77,10 @@ fce_abundance(post, prep, data) |>
 ## Covariate effects
 fce_coveff_plot(
   # use_pars = c("Intercept", "log_discharge_scl", "doy_cent"),
-  use_pars = c("Intercept", "discharge_scl", "doy_cent"),
+  use_pars = c(
+    "Intercept", "log_discharge_scl", "temperature_scl",
+    "log_discharge_scl:temperature_scl"
+  ),
   mod = "pcap",
   post, prep, data,
   incl_prior = TRUE
@@ -85,57 +88,87 @@ fce_coveff_plot(
 
 eff_df <- fce_create_eff_df(
   c(
-    "factor(doy)",
-    "discharge_scl", "doy_cent"
+    "log_discharge_scl", "temperature_scl",
+    "log_discharge_scl:temperature_scl"
   ),
   "pcap", post, prep, data
 )
 
+## Partial effect of each covariate over time
 eff_df |>
-  point_interval(`factor(doy)_eff`) |>
-  ggplot(aes(x = date, y = `factor(doy)_eff`, ymin = .lower, ymax = .upper)) +
+  point_interval(log_discharge_scl_eff) |>
+  ggplot(aes(
+    x = date, y = log_discharge_scl_eff,
+    ymin = .lower, ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(doy_cent_eff) |>
-  ggplot(aes(x = date, y = doy_cent_eff, ymin = .lower, ymax = .upper)) +
+  point_interval(temperature_scl_eff) |>
+  ggplot(aes(
+    x = date, y = temperature_scl_eff,
+    ymin = .lower, ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(discharge_scl_eff) |>
-  ggplot(aes(x = date, y = discharge_scl_eff, ymin = .lower, ymax = .upper)) +
+  point_interval(`log_discharge_scl:temperature_scl_eff`) |>
+  ggplot(aes(
+    x = date, y = `log_discharge_scl:temperature_scl_eff`,
+    ymin = .lower, ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   plot_layout(ncol = 1)
 
+## Main effects
 eff_df |>
-  point_interval(`factor(doy)_eff`) |>
-  ggplot(aes(x = date, y = `factor(doy)_eff`, ymin = .lower, ymax = .upper)) +
+  point_interval(log_discharge_scl_eff) |>
+  ggplot(aes(
+    x = discharge, y = log_discharge_scl_eff,
+    ymin = .lower, ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(discharge_scl_eff) |>
-  ggplot(aes(x = discharge, y = discharge_scl_eff, ymin = .lower, ymax = .upper)) +
+  point_interval(temperature_scl_eff) |>
+  ggplot(aes(
+    x = temperature, y = temperature_scl_eff,
+    ymin = .lower, ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
-  eff_df |>
-  point_interval(doy_cent_eff) |>
-  ggplot(aes(x = date, y = doy_cent_eff, ymin = .lower, ymax = .upper)) +
-  geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
-  geom_ribbon(alpha = 0.4) +
-  geom_line() +
-  scale_x_date(date_breaks = "1 month", date_labels = "%B") +
+  ## eff_df |>
+  ## point_interval(`log_discharge_scl:temperature_scl_eff`) |>
+  ## ggplot(aes(
+  ##   x = discharge * temperature, y = `log_discharge_scl:temperature_scl_eff`,
+  ##   ymin = .lower, ymax = .upper
+  ## )) +
+  ## geom_ribbon(alpha = 0.4) +
+  ## geom_line() +
+  ## scale_x_date(date_breaks = "1 month", date_labels = "%B") +
   plot_layout(ncol = 1)
+
+## Total effect of discharge and temperature
+eff_df |>
+  mutate(
+    disch_temp = log_discharge_scl_eff + temperature_scl_eff +
+      `log_discharge_scl:temperature_scl_eff`
+  ) |>
+  point_interval(disch_temp) |>
+  ggplot(aes(x = discharge, y = temperature, color = disch_temp)) +
+  geom_point() +
+  scale_x_log10()
 
 ## How much variation in the random effects? If posterior is mostly close to
 ## zero might consider eliminating that random effect.
 ## Note that if availability smoothers are completely separate these parameters
 ## cannot be compared directly to each other.
 fce_randscale_plot(post, prep, data, mod = "avail", incl_prior = TRUE)
-fce_randscale_plot(post, prep, data, mod = "pcap", incl_prior = TRUE)
+## fce_randscale_plot(post, prep, data, mod = "pcap", incl_prior = TRUE)
 fce_randscale_plot(post, prep, data, mod = "rs", incl_prior = TRUE)
