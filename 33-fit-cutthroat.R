@@ -93,7 +93,7 @@ fit <- stan(
     ## Log-liklihood, used for `loo` model selection
     "log_lik"
   ),
-  chains = 4, iter = 2000, warmup = 1000,
+  chains = 4, iter = 4000, warmup = 2000,
   init_r = 1, # Restrict inits to prevent poisson rate exceptions
   control = list(adapt_delta = 0.8)
 )

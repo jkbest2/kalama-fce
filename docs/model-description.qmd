@@ -1,0 +1,9 @@
+---
+title: FCE model description
+author: John Best
+---
+
+This model uses mark-recapture trials and counts of unmarked (including maiden captures) to estimate the number of fish passing the trap and the efficiency of the trap each day during the trapping season. The specification of the model is closely related to that used in the "non-diagonal" BTSPAS model, and includes three submodels. The first accounts for the delay between release and recapture. The Kalama smolt trap protocol includes releases at three locations, which are at different distances upstream of the trap. For this reason the model used three independent smoothers to estimate the recapture delay from each release site. The second submdodel estimates the probability of capture each day. This model included linear effects of log discharge, temperature, and their interaction. This probability is assumed to be the same for all fish encountering the trap. The third submodel estimates the rate that unmarked/maiden fish encountered the trap each day. A smoother approximating a Gaussian process along with a daily iid random effect were used in this submodel.
+
+The model was fit using the No-U-Turn Sampler in Stan for MCMC sampling. Four chains of $4,000$ iterations were sampled, with the first $2,000$] of each chain dropped as warmup. No divergent transitions occurred after warmup. The maximum $\hat{R}$ values of each fit were less than $1.01$, providing evidence that the MCMC samples had converged. The minimum effective sample size among all parameters was greater than $2,000$ for each fit.
+.

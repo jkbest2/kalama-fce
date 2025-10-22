@@ -27,20 +27,6 @@ n_div <- get_num_divergent(fit_obj$fit)
 if (n_div > 0) {
   warning("There were ", n_div, " divergent transitions in this fit.")
 }
-if (n_div > 0 && FALSE) { # Only run these manually
-  np <- nuts_params(fit_obj$fit)
-  library(bayesplot)
-  npsty <- parcoord_style_np("red", 0.4, 1)
-  mcmc_parcoord(post, regex_pars = "avail_coef_fixed", np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "avail_coef_random", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "avail_rand_scale", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "pcap_coef_fixed", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "pcap_coef_random", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, pars = c("pcap_rand_scale", "__lp"), transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "rs_coef_fixed", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "rs_coef_random", transform = scale, np = np, np_style = npsty)
-  mcmc_parcoord(post, regex_pars = "rs_rand_scale", transform = scale, np = np, np_style = npsty)
-}
 
 ## Plots
 avail_plot(post, prep, data, "cutthroat", base_dir)
