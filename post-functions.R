@@ -2,9 +2,15 @@
 check_rhat <- function(post) {
   post |>
     keep_at(c(
-      "avail_coef_fixed", "avail_coef_random", "avail_rand_scale",
-      "pcap_coef_fixed", "pcap_coef_random", "pcap_rand_scale",
-      "rs_coef_fixed", "rs_coef_random", "rs_rand_scale",
+      "avail_coef_fixed",
+      "avail_coef_random",
+      "avail_rand_scale",
+      "pcap_coef_fixed",
+      "pcap_coef_random",
+      "pcap_rand_scale",
+      "rs_coef_fixed",
+      "rs_coef_random",
+      "rs_rand_scale",
       "lp__"
     )) |>
     map(posterior::rhat) |>
@@ -14,9 +20,15 @@ check_rhat <- function(post) {
 check_ess_bulk <- function(post) {
   post |>
     keep_at(c(
-      "avail_coef_fixed", "avail_coef_random", "avail_rand_scale",
-      "pcap_coef_fixed", "pcap_coef_random", "pcap_rand_scale",
-      "rs_coef_fixed", "rs_coef_random", "rs_rand_scale",
+      "avail_coef_fixed",
+      "avail_coef_random",
+      "avail_rand_scale",
+      "pcap_coef_fixed",
+      "pcap_coef_random",
+      "pcap_rand_scale",
+      "rs_coef_fixed",
+      "rs_coef_random",
+      "rs_rand_scale",
       "lp__"
     )) |>
     map(posterior::ess_bulk) |>
@@ -26,9 +38,15 @@ check_ess_bulk <- function(post) {
 check_ess_tail <- function(post) {
   post |>
     keep_at(c(
-      "avail_coef_fixed", "avail_coef_random", "avail_rand_scale",
-      "pcap_coef_fixed", "pcap_coef_random", "pcap_rand_scale",
-      "rs_coef_fixed", "rs_coef_random", "rs_rand_scale",
+      "avail_coef_fixed",
+      "avail_coef_random",
+      "avail_rand_scale",
+      "pcap_coef_fixed",
+      "pcap_coef_random",
+      "pcap_rand_scale",
+      "rs_coef_fixed",
+      "rs_coef_random",
+      "rs_rand_scale",
       "lp__"
     )) |>
     map(posterior::ess_tail) |>
@@ -47,9 +65,15 @@ convergence_diagnostics <- function(fit) {
     enframe(name = "par", value = "ess_tail")
   diag_df <- tibble(
     par = c(
-      "avail_coef_fixed", "avail_coef_random", "avail_rand_scale",
-      "pcap_coef_fixed", "pcap_coef_random", "pcap_rand_scale",
-      "rs_coef_fixed", "rs_coef_random", "rs_rand_scale",
+      "avail_coef_fixed",
+      "avail_coef_random",
+      "avail_rand_scale",
+      "pcap_coef_fixed",
+      "pcap_coef_random",
+      "pcap_rand_scale",
+      "rs_coef_fixed",
+      "rs_coef_random",
+      "rs_rand_scale",
       "lp__"
     )
   ) |>
@@ -108,11 +132,14 @@ avail_plot <- function(post, prep, data, name, base_dir) {
     ) +
     theme_minimal()
 
-  ggsave(
-    here::here(base_dir, paste0(name, "-avail.png")),
-    plt,
-    width = 12, height = 8
-  )
+  if (!missing(base_dir)) {
+    ggsave(
+      here::here(base_dir, paste0(name, "-avail.png")),
+      plt,
+      width = 12,
+      height = 8
+    )
+  }
 
   plt
 }
@@ -139,10 +166,15 @@ recap_obs <- function(prep, recap_end = NULL) {
 
 ## Plot probability of recapture
 pcap_plot <- function(
-    post, prep, data,
-    name, base_dir,
-    .width = 0.95,
-    plot_noop = FALSE, noop_bg = FALSE) {
+  post,
+  prep,
+  data,
+  name,
+  base_dir,
+  .width = 0.95,
+  plot_noop = FALSE,
+  noop_bg = FALSE
+) {
   release_df <- prep$release_df
   recap_df <- prep$recap_df
   unmarked <- prep$unmarked
@@ -174,9 +206,14 @@ pcap_plot <- function(
     plt <- plt +
       geom_rect(
         aes(x = date),
-        ymin = 0, ymax = Inf, width = 1,
-        color = NA, fill = "red", alpha = 0.1,
-        data = op_df, inherit.aes = FALSE
+        ymin = 0,
+        ymax = Inf,
+        width = 1,
+        color = NA,
+        fill = "red",
+        alpha = 0.1,
+        data = op_df,
+        inherit.aes = FALSE
       )
   }
   plt <- plt +
@@ -184,18 +221,24 @@ pcap_plot <- function(
     geom_segment(
       data = recap_obs,
       aes(
-        x = release_date, xend = recap_end,
-        y = recap_rate, yend = recap_rate,
+        x = release_date,
+        xend = recap_end,
+        y = recap_rate,
+        yend = recap_rate,
         color = release_site
-      ), alpha = 0.8
+      ),
+      alpha = 0.8
     ) +
     geom_point(
       data = recap_obs,
       aes(
-        x = release_date, y = recap_rate,
-        size = count, color = release_site
+        x = release_date,
+        y = recap_rate,
+        size = count,
+        color = release_site
         # shape = release_site
-      ), alpha = 0.8
+      ),
+      alpha = 0.8
     ) +
     geom_line() +
     facet_wrap(~year, ncol = 1) +
@@ -210,19 +253,27 @@ pcap_plot <- function(
       color = "Release_site"
     ) +
     theme_minimal()
-  ggsave(
-    here::here(base_dir, paste0(name, "-pcap.png")),
-    plt,
-    width = 12, height = 8
-  )
+  if (!missing(base_dir)) {
+    ggsave(
+      here::here(base_dir, paste0(name, "-pcap.png")),
+      plt,
+      width = 12,
+      height = 8
+    )
+  }
   plt
 }
 
 ## Plot predicted run size
 runsize_plot <- function(
-    post, prep, data,
-    name, base_dir,
-    .width = 0.95, noop_bg = FALSE) {
+  post,
+  prep,
+  data,
+  name,
+  base_dir,
+  .width = 0.95,
+  noop_bg = FALSE
+) {
   release_df <- prep$release_df
   recap_df <- prep$recap_df
   unmarked <- prep$unmarked
@@ -242,12 +293,18 @@ runsize_plot <- function(
     op_df <- pred_df |>
       select(date, op) |>
       filter(!op)
-    plt <- plt + geom_rect(
-      aes(x = date),
-      ymin = 0, ymax = Inf, width = 1,
-      color = NA, fill = "red", alpha = 0.1,
-      data = op_df, inherit.aes = FALSE
-    )
+    plt <- plt +
+      geom_rect(
+        aes(x = date),
+        ymin = 0,
+        ymax = Inf,
+        width = 1,
+        color = NA,
+        fill = "red",
+        alpha = 0.1,
+        data = op_df,
+        inherit.aes = FALSE
+      )
   }
   plt <- plt +
     geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha = 0.3) +
@@ -263,11 +320,14 @@ runsize_plot <- function(
       y = "Number of Smolts"
     ) +
     theme_minimal()
-  ggsave(
-    here::here(base_dir, paste0(name, "-runsize.png")),
-    plt,
-    width = 12, height = 8
-  )
+  if (!missing(base_dir)) {
+    ggsave(
+      here::here(base_dir, paste0(name, "-runsize.png")),
+      plt,
+      width = 12,
+      height = 8
+    )
+  }
   plt
 }
 
@@ -291,9 +351,13 @@ fce_abundance <- function(post, prep, data, ...) {
 
 ## Plot total abundance
 fce_abund_plot <- function(
-    post, prep, data,
-    name, base_dir,
-    .width = c(0.66, 0.95)) {
+  post,
+  prep,
+  data,
+  name,
+  base_dir,
+  .width = c(0.66, 0.95)
+) {
   pred_plot_df <- fce_abundance(post, prep, data)
 
   abund_plt <- ggplot(pred_plot_df, aes(xdist = abundance)) +
@@ -309,19 +373,27 @@ fce_abund_plot <- function(
     ) +
     theme_minimal()
 
-  ggsave(
-    here::here(base_dir, paste0(name, "-seasonal.png")),
-    abund_plt,
-    width = 12, height = 8
-  )
+  if (!missing(base_dir)) {
+    ggsave(
+      here::here(base_dir, paste0(name, "-seasonal.png")),
+      abund_plt,
+      width = 12,
+      height = 8
+    )
+  }
 
   abund_plt
 }
 
 ## Plot covariate effects
 fce_coveff_plot <- function(
-    use_pars = "fixed", mod = "pcap",
-    post, prep, data, incl_prior = TRUE) {
+  use_pars = "fixed",
+  mod = "pcap",
+  post,
+  prep,
+  data,
+  incl_prior = TRUE
+) {
   par_prior <- fce_get_priors(data, mod)
   par_post <- fce_covariate_effect(use_pars, post, data, mod)
 
@@ -359,23 +431,36 @@ fce_coveff_plot <- function(
 }
 
 fce_create_eff_df <- function(
-    use_pars, mod = c("pcap", "rs", "avail"),
-    post, prep, data) {
+  use_pars,
+  mod = c("pcap", "rs", "avail"),
+  post,
+  prep,
+  data
+) {
   mod <- match.arg(mod)
   eff_df <- prep$pred_df
   for (par in use_pars) {
     eff_df <- eff_df |>
-      mutate("{par}_eff" := fce_partial_effect(
-        use_pars = par, post, data, mod
-      ))
+      mutate(
+        "{par}_eff" := fce_partial_effect(
+          use_pars = par,
+          post,
+          data,
+          mod
+        )
+      )
   }
   eff_df
 }
 
 ## Plot fitted random effect scale parameters
 fce_randscale_plot <- function(
-    post, prep, data,
-    mod = c("pcap", "rs", "avail"), incl_prior = TRUE) {
+  post,
+  prep,
+  data,
+  mod = c("pcap", "rs", "avail"),
+  incl_prior = TRUE
+) {
   mod <- match.arg(mod)
   df <- full_join(
     fce_get_hpriors(data, mod = mod),
@@ -385,8 +470,10 @@ fce_randscale_plot <- function(
 
   ## If looking at the availabiltiy model, recode the parameters to increasing
   ## upstream release site distance
-  if (mod == "avail" &&
-    all(c("tt_lower", "tt_yellow", "tt_jacks") %in% df$par)) {
+  if (
+    mod == "avail" &&
+      all(c("tt_lower", "tt_yellow", "tt_jacks") %in% df$par)
+  ) {
     df <- df |>
       mutate(par = factor(par, levels = c("tt_lower", "tt_yellow", "tt_jacks")))
   }

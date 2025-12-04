@@ -1,0 +1,433 @@
+---
+title: FCE model for Kalama Screw Trap
+format: revealjs
+---
+
+```{r setup, echo=FALSE}
+library(tidyverse)
+library(rstan)
+library(posterior)
+library(ggdist) ## For plotting posteriors and distributions
+library(patchwork)
+
+knitr::opts_chunk$set(echo = FALSE)
+
+source(here::here("helper-functions.R"))
+source(here::here("data-functions.R"))
+source(here::here("post-functions.R"))
+
+kalr <- read_rds(here::here("data", "kalr.rds"))
+trap <- read_rds(here::here("data", "trap.rds"))
+
+to_minsec <- function(dt, sec_signif = 2) {
+  dt <- as.numeric(dt, units = "mins")
+  m <- as.numeric(dt) %/% 1
+  s <- as.numeric(dt) %%
+    1 |>
+    as.difftime(units = "mins") |>
+    as.numeric(units = "secs") |>
+    as.numeric() |>
+    signif(digits = sec_signif)
+  paste(m, s, sep = ":")
+}
+```
+
+## Kalama smolt abundance estimation
+
+- Steelhead and Cutthroat
+- Most fish tagged and released upstream
+- **Three release sites**
+  - *Lower Site* 5.3 rkm upstream
+  - *Yellow Gate* 15 rkm upstream
+  - *Jacks Creek* 22.8 rkm upstream
+
+## Maiden Captures
+
+```{r maiden-captures}
+kalr |>
+  filter(
+    capture_type == "Maiden"
+  ) |>
+  mutate(notag = ifelse(!is.na(pit), NA, TRUE)) |>
+  summarize(
+    count = sum(count),
+    .by = c(date, species, release_site)
+  ) |>
+  ggplot(aes(x = date, y = count, fill = release_site)) +
+  geom_col(position = position_stack(reverse = TRUE)) +
+  # scale_color_manual(values = c("TRUE" = "gray30"), na.translate = FALSE) +
+  # guides(fill = "none", color = "none") +
+  labs(x = "Date", y = "Count", fill = "Release Site") +
+  facet_wrap(~species, ncol = 1) +
+  theme_minimal()
+```
+
+## Recaptures
+
+```{r recaptures}
+kalr |>
+  filter(capture_type == "Recapture") |>
+  summarize(count = sum(count), .by = c(date, species)) |>
+  ggplot(aes(x = date, y = count)) +
+  geom_col() +
+  facet_wrap(~species, ncol = 1) +
+  theme_minimal()
+```
+
+## Covariates
+
+```{r covariates}
+p_op <- trap |>
+  ggplot(aes(x = date, y = op, color = op)) +
+  geom_point() +
+  guides(color = "none") +
+  labs(x = "Date", y = "Op") +
+  theme_minimal()
+p_temp <- trap |>
+  ggplot(aes(x = date, y = temperature)) +
+  geom_line() +
+  labs(x = "Date", y = "Temperature (°C)") +
+  theme_minimal()
+p_disch <- trap |>
+  ggplot(aes(x = date, y = discharge)) +
+  geom_line() +
+  labs(x = "Date", y = "Discharge (cfs)") +
+  theme_minimal()
+
+p_temp +
+  p_disch +
+  p_op +
+  plot_layout(ncol = 1, heights = c(1, 1, 0.25), axes = "collect_x")
+```
+
+## Model
+
+- **Availability**: independent smoothers for each release site
+- **Probability of capture**: intercept, linear effects and interaction of log-discharge and temperature
+- **Unmarked arrivals**: temporal smoother and daily independent random effects
+
+## Fitting
+
+- $4$ chains with $4000$ iterations each
+- $2000$ iterations discarded as warmup
+- Fit with Stan's NUTS sampler
+
+## Steelhead results
+
+```{r sth-post}
+sth_prep <- read_rds(here::here("results", "steelhead", "steelhead-prep.rds"))
+sth_fit_obj <- read_rds(here::here("results", "steelhead", "steelhead-fit.rds"))
+sth_data <- sth_fit_obj$data
+sth_post <- as_draws_rvars(sth_fit_obj$fit) |>
+  thin_draws(3)
+
+sth_diag_df <- convergence_diagnostics(sth_fit_obj$fit)
+sth_et <- get_elapsed_time(sth_fit_obj$fit) |>
+  rowSums() |>
+  max() |>
+  magrittr::divide_by(60) |>
+  as.difftime(units = "mins")
+```
+
+- Maximum $\hat{R}$: `r sprintf("%.3f", max(sth_diag_df$rhat_max, na.rm = TRUE))`
+- Minimum ESS: `r round(min(sth_diag_df$ess_bulk, na.rm = TRUE))`
+- Time to fit: `r to_minsec(sth_et)`
+
+## Steelhead results - Availability
+
+```{r sth-avail}
+avail_plot(sth_post, sth_prep, sth_data, "steelhead")
+```
+
+## Steelhead results - Probability of capture
+
+```{r sth-pcap}
+# Warnings about missing dataare from NA's substituted in when trap is not
+# operating. Alternatively, can use `plot_noop = TRUE` to show pcap going to
+# zero during trap closures.
+pcap_plot(
+  sth_post,
+  sth_prep,
+  sth_data,
+  "steelhead",
+  .width = 0.95,
+  plot_noop = FALSE,
+  noop_bg = FALSE
+)
+```
+
+## Steelhead results - Run size
+```{r sth-rs}
+runsize_plot(
+  sth_post,
+  sth_prep,
+  sth_data,
+  "steelhead",
+  .width = 0.95,
+  noop_bg = TRUE
+)
+```
+
+## Steelhead results - Total abundance
+
+```{r sth-abund}
+fce_abund_plot(sth_post, sth_prep, sth_data, "steelhead")
+```
+
+## Steelhead results - Covariate effects
+
+```{r sth-coveff}
+fce_coveff_plot(
+  use_pars = c(
+    "Intercept",
+    "log_discharge_scl",
+    "temperature_scl",
+    "log_discharge_scl:temperature_scl"
+  ),
+  mod = "pcap",
+  sth_post,
+  sth_prep,
+  sth_data,
+  incl_prior = TRUE
+)
+```
+
+## Steelhead results - Covariate effects
+```{r sth-coveff2}
+sth_pcap_pform <- attr(sth_data, "pcap_pform")
+sth_pcap_basis <- attr(sth_data, "pcap_basis")
+
+cov_df <- sth_pcap_pform$data
+cov_df2 <- expand_grid(
+  discharge = seq(
+    min(cov_df$discharge),
+    max(cov_df$discharge),
+    length.out = 101
+  ),
+  temperature = seq(
+    min(cov_df$temperature),
+    max(cov_df$temperature),
+    length.out = 101
+  )
+) |>
+  mutate(
+    log_discharge_scl = (log(discharge) -
+      attr(cov_df$log_discharge_scl, "scaled:center")) /
+      attr(cov_df$log_discharge_scl, "scaled:scale"),
+    temperature_scl = (temperature -
+      attr(cov_df$temperature_scl, "scaled:center")) /
+      attr(cov_df$temperature_scl, "scaled:scale")
+  )
+sth_dm <- model.matrix(
+  sth_pcap_pform$linear,
+  data = cov_df2
+)[, -1]
+sth_cov_df <- cov_df2 |>
+  mutate(eff = drop(sth_dm %*% sth_post$pcap_coef_fixed[2:4])) |>
+  point_interval(eff, .width = 0.8)
+eff_range <- c(min(sth_cov_df$.lower), max(sth_cov_df$.upper))
+
+sth_cov_df |>
+  ggplot(aes(x = discharge, y = temperature)) +
+  geom_tile(aes(fill = .lower)) +
+  geom_contour(aes(z = .lower), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "10th percentile"
+  ) +
+  theme_minimal() +
+  sth_cov_df |>
+    ggplot(aes(x = discharge, y = temperature)) +
+  geom_raster(aes(fill = eff)) +
+  geom_contour(aes(z = eff), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "Median"
+  ) +
+  theme_minimal() +
+  sth_cov_df |>
+    ggplot(aes(x = discharge, y = temperature)) +
+  geom_raster(aes(fill = .upper)) +
+  geom_contour(aes(z = .upper), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  theme_minimal() +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "90th percentile"
+  ) +
+  plot_layout(axes = "collect", guides = "collect")
+```
+
+## Cutthroat results
+
+```{r cth-post}
+cth_prep <- read_rds(here::here("results", "cutthroat", "cutthroat-prep.rds"))
+cth_fit_obj <- read_rds(here::here("results", "cutthroat", "cutthroat-fit.rds"))
+cth_data <- cth_fit_obj$data
+cth_post <- as_draws_rvars(cth_fit_obj$fit) |>
+  thin_draws(3)
+
+cth_diag_df <- convergence_diagnostics(cth_fit_obj$fit)
+cth_et <- get_elapsed_time(cth_fit_obj$fit) |>
+  rowSums() |>
+  max() |>
+  magrittr::divide_by(60) |>
+  as.difftime(units = "mins")
+```
+
+- Maximum $\hat{R}$: `r sprintf("%.3f", max(cth_diag_df$rhat_max, na.rm = TRUE))`
+- Minimum ESS: `r round(min(cth_diag_df$ess_bulk, na.rm = TRUE))`
+- Time to fit: `r to_minsec(cth_et)`
+
+## Cutthroat results - Availability
+
+```{r cth-avail}
+avail_plot(cth_post, cth_prep, cth_data, "steelhead")
+```
+
+## Cutthroat results
+
+```{r cth-pcap}
+# Warnings about missing dataare from NA's substituted in when trap is not
+# operating. Alternatively, can use `plot_noop = TRUE` to show pcap going to
+# zero during trap closures.
+pcap_plot(
+  cth_post,
+  cth_prep,
+  cth_data,
+  "steelhead",
+  .width = 0.95,
+  plot_noop = FALSE,
+  noop_bg = FALSE
+)
+```
+
+## Cutthroat results
+```{r cth-rs}
+runsize_plot(
+  cth_post,
+  cth_prep,
+  cth_data,
+  "steelhead",
+  .width = 0.95,
+  noop_bg = TRUE
+)
+```
+
+## Cutthroat results
+
+```{r cth-abund}
+fce_abund_plot(cth_post, cth_prep, cth_data, "steelhead")
+```
+
+## Cutthroat results - Covariate effects
+
+```{r cth-coveff}
+fce_coveff_plot(
+  use_pars = c(
+    "Intercept",
+    "log_discharge_scl",
+    "temperature_scl",
+    "log_discharge_scl:temperature_scl"
+  ),
+  mod = "pcap",
+  cth_post,
+  cth_prep,
+  cth_data,
+  incl_prior = TRUE
+)
+```
+
+## Cutthroat results - Covariate effects
+```{r cth-coveff2}
+cth_pcap_pform <- attr(cth_data, "pcap_pform")
+cth_pcap_basis <- attr(cth_data, "pcap_basis")
+
+cov_df <- cth_pcap_pform$data
+cov_df2 <- expand_grid(
+  discharge = seq(
+    min(cov_df$discharge),
+    max(cov_df$discharge),
+    length.out = 101
+  ),
+  temperature = seq(
+    min(cov_df$temperature),
+    max(cov_df$temperature),
+    length.out = 101
+  )
+) |>
+  mutate(
+    log_discharge_scl = (log(discharge) -
+      attr(cov_df$log_discharge_scl, "scaled:center")) /
+      attr(cov_df$log_discharge_scl, "scaled:scale"),
+    temperature_scl = (temperature -
+      attr(cov_df$temperature_scl, "scaled:center")) /
+      attr(cov_df$temperature_scl, "scaled:scale")
+  )
+cth_dm <- model.matrix(
+  cth_pcap_pform$linear,
+  data = cov_df2
+)[, -1]
+cth_cov_df <- cov_df2 |>
+  mutate(eff = drop(cth_dm %*% cth_post$pcap_coef_fixed[2:4])) |>
+  point_interval(eff, .width = 0.8)
+eff_range <- c(min(cth_cov_df$.lower), max(cth_cov_df$.upper))
+
+cth_cov_df |>
+  ggplot(aes(x = discharge, y = temperature)) +
+  geom_tile(aes(fill = .lower)) +
+  geom_contour(aes(z = .lower), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "10th percentile"
+  ) +
+  theme_minimal() +
+  cth_cov_df |>
+    ggplot(aes(x = discharge, y = temperature)) +
+  geom_raster(aes(fill = eff)) +
+  geom_contour(aes(z = eff), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "Median"
+  ) +
+  theme_minimal() +
+  cth_cov_df |>
+    ggplot(aes(x = discharge, y = temperature)) +
+  geom_raster(aes(fill = .upper)) +
+  geom_contour(aes(z = .upper), breaks = 0, color = "white") +
+  scale_x_continuous(expand = FALSE) +
+  scale_y_continuous(expand = FALSE) +
+  scale_fill_viridis_c(limits = eff_range) +
+  theme_minimal() +
+  labs(
+    x = "Discharge (cfs)",
+    y = "Temperature (°C)",
+    fill = "Effect",
+    title = "90th percentile"
+  ) +
+  plot_layout(axes = "collect", guides = "collect")
+```

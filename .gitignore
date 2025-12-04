@@ -1,2 +1,6 @@
 data/
 results/
+docs/figs/*
+docs/kalama-fce_files/*
+*.html
+*.rds
