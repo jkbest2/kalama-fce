@@ -30,18 +30,25 @@ if (n_div > 0) {
 
 ## Plots
 avail_plot(post, prep, data, "steelhead", base_dir)
-# Warnings about missing data are from NA's substituted in when trap is not
+# Warnings about missing dataare from NA's substituted in when trap is not
 # operating. Alternatively, can use `plot_noop = TRUE` to show pcap going to
 # zero during trap closures.
 pcap_plot(
-  post, prep, data,
-  "steelhead", base_dir,
+  post,
+  prep,
+  data,
+  "steelhead",
+  base_dir,
   .width = 0.95,
-  plot_noop = FALSE, noop_bg = FALSE
+  plot_noop = FALSE,
+  noop_bg = FALSE
 )
 runsize_plot(
-  post, prep, data,
-  "steelhead", base_dir,
+  post,
+  prep,
+  data,
+  "steelhead",
+  base_dir,
   .width = 0.95,
   noop_bg = TRUE
 )
@@ -63,38 +70,61 @@ fce_abundance(post, prep, data) |>
 fce_coveff_plot(
   # use_pars = c("Intercept", "log_discharge_scl", "doy_cent"),
   use_pars = c(
-    "Intercept", "log_discharge_scl", "temperature_scl",
+    "Intercept",
+    "log_discharge_scl",
+    "temperature_scl",
     "log_discharge_scl:temperature_scl"
   ),
   mod = "pcap",
-  post, prep, data,
+  post,
+  prep,
+  data,
   incl_prior = TRUE
 )
 
 eff_df <- fce_create_eff_df(
   c(
-    "log_discharge_scl", "temperature_scl",
+    "log_discharge_scl",
+    "temperature_scl",
     "log_discharge_scl:temperature_scl"
   ),
-  "pcap", post, prep, data
+  "pcap",
+  post,
+  prep,
+  data
 )
 
 ## Partial effect of each covariate over time
 eff_df |>
   point_interval(log_discharge_scl_eff) |>
-  ggplot(aes(x = date, y = log_discharge_scl_eff, ymin = .lower, ymax = .upper)) +
+  ggplot(aes(
+    x = date,
+    y = log_discharge_scl_eff,
+    ymin = .lower,
+    ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(temperature_scl_eff) |>
-  ggplot(aes(x = date, y = temperature_scl_eff, ymin = .lower, ymax = .upper)) +
+    point_interval(temperature_scl_eff) |>
+    ggplot(aes(
+      x = date,
+      y = temperature_scl_eff,
+      ymin = .lower,
+      ymax = .upper
+    )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(`log_discharge_scl:temperature_scl_eff`) |>
-  ggplot(aes(x = date, y = `log_discharge_scl:temperature_scl_eff`, ymin = .lower, ymax = .upper)) +
+    point_interval(`log_discharge_scl:temperature_scl_eff`) |>
+    ggplot(aes(
+      x = date,
+      y = `log_discharge_scl:temperature_scl_eff`,
+      ymin = .lower,
+      ymax = .upper
+    )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
@@ -103,13 +133,23 @@ eff_df |>
 ## Main effects
 eff_df |>
   point_interval(log_discharge_scl_eff) |>
-  ggplot(aes(x = discharge, y = log_discharge_scl_eff, ymin = .lower, ymax = .upper)) +
+  ggplot(aes(
+    x = discharge,
+    y = log_discharge_scl_eff,
+    ymin = .lower,
+    ymax = .upper
+  )) +
   geom_hline(yintercept = 0, alpha = 0.25, linetype = "dashed") +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   eff_df |>
-  point_interval(temperature_scl_eff) |>
-  ggplot(aes(x = temperature, y = temperature_scl_eff, ymin = .lower, ymax = .upper)) +
+    point_interval(temperature_scl_eff) |>
+    ggplot(aes(
+      x = temperature,
+      y = temperature_scl_eff,
+      ymin = .lower,
+      ymax = .upper
+    )) +
   geom_ribbon(alpha = 0.4) +
   geom_line() +
   # eff_df |>
@@ -123,7 +163,8 @@ eff_df |>
 ## Total effect of discharge and temperature
 eff_df |>
   mutate(
-    disch_temp = log_discharge_scl_eff + temperature_scl_eff +
+    disch_temp = log_discharge_scl_eff +
+      temperature_scl_eff +
       `log_discharge_scl:temperature_scl_eff`
   ) |>
   point_interval(disch_temp) |>
